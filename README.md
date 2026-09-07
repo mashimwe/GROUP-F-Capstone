@@ -8,11 +8,11 @@
 
 | Name | Role | GitHub handle |
 | --- | --- | --- |
-| Andimashimwe Rhoda | Project/Requirements Lead | @mashimwe |
-| Priscillah Aruho | Application/Integration Lead | @aruhoPriscillah |
-| Bahati Brenda Kizito | AI Engineering Lead | @Bahati-bk |
+| Andimashimwe Rhoda | Application/Integration Lead | @mashimwe |
+| Priscillah Aruho | Project/Requirements Lead | @aruhoPriscillah |
+| Bahati Brenda Kizito | DevOps/Documentation Lead | @Bahati-bk |
 | Samuel Buyinza | Quality/Security Lead | @buyinzasamuel |
-| Dennise Nuwahereza | DevOps/Documentation Lead | @Dennise-Nuwahereza |
+| Dennise Nuwahereza | AI Engineering Lead | @Dennise-Nuwahereza |
 
 ## Problem Statement
 
