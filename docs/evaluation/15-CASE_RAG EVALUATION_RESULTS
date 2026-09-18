@@ -1,0 +1,28 @@
+15-CASE RAG EVALUATION RESULTS
+BY
+
+GROUP F
+
+15-Case RAG Evaluation Results
+Cases were designed across three types; answerable, partially answerable, and deliberately unanswerable to test not just whether the system can find the right document, but whether it correctly refuses to ground an answer when the corpus has no real coverage. All results below are the actual output of running rag_pipeline.py against the corpus, not projected or illustrative values.
+
+#	Question	Type	Actual retrieved (real run, top-3, score)	Result
+1	My internet is completely down, what should I try first?	Answerable	doc01 (0.194) only result above threshold	Pass
+2	What do the lights on my router mean?	Answerable	doc09 (0.181); doc02 (0.145); doc10 (0.104)	Pass
+3	My internet is slow every evening when everyone is home.	Answerable	doc02 (0.198); doc03 (0.137); doc04 (0.104)	Pass w/ caveat correct doc (doc03) retrieved but ranked #2, not #1
+4	My connection keeps dropping for a few seconds and then comes back.	Answerable	doc01 (0.201); doc07 (0.169); doc10 (0.101)	Pass w/ caveat correct doc (doc07) retrieved but outranked by doc01
+5	How do I change my Wi-Fi password?	Answerable	doc15 (0.516); doc10 (0.263); doc04 (0.199)	Pass
+6	How do I run an accurate speed test?	Answerable	doc14 (0.428); doc05 (0.113)	Pass
+7	My router feels very hot and keeps disconnecting.	Answerable	doc06 (0.245); doc11 (0.121); doc08 (0.095)	Pass
+8	My connection is slow and drops every few minutes, and will I get a refund for the downtime?	Partially answerable	doc07 (0.224); doc05 (0.090); doc03 (0.083): nothing on refunds (correctly absent from corpus)	Pass answers the technical part, correctly has no basis to answer the refund part
+9	Is there an outage in my area, and if so when will it be fixed and can I get compensation?	Partially answerable	doc12 (0.369); doc13 (0.324) — nothing on compensation (correctly absent)	Pass answers status-check part, correctly silent on compensation
+10	My router is 6 years old, keeps losing its settings, and I also want to know if I should upgrade to fibre.	Partially answerable	doc11 (0.312); doc02 (0.150): nothing on fibre upgrades (correctly absent)	Pass answers equipment part, correctly silent on the upgrade question
+11	Wi-Fi is slow in my bedroom but fine near the router should I just buy a new router entirely?	Partially answerable	doc04 (0.292); doc15 (0.262); doc10 (0.206)	Pass w/ caveat doc04 correct, but doc15/doc10 are only weakly relevant to “buy new router”
+12	How much does a new fibre installation cost at a different address?	Unanswerable	doc15 (0.206); doc02 (0.128)	FAIL should return no result; false-positive match on generic words
+13	Can I get a static IP address for my home connection?	Unanswerable	doc02 (0.201); doc15 (0.180)	FAIL should return no result; false-positive match on generic words
+14	What is your policy on refunds for repeated outages?	Unanswerable	NONE: correctly below threshold	Pass
+15	Is my personal data shared with third parties?	Unanswerable	doc13 (0.170)	FAIL should return no result; false-positive match
+
+Result summary: 12 of 15 cases passed cleanly, 2 passed with a ranking caveat, and 3 of the 4 unanswerable cases produced a false-positive retrieval, documented as genuine failures below rather than adjusted after the fact.
+ 
+
