@@ -1,0 +1,35 @@
+=== Running Week 4 tool test cases ===
+
+Case 1: Outage check — confirmed outage
+  -> {'ok': True, 'output': {'status': 'outage_confirmed', 'area_code': 'KLA-05', 'eta_minutes': 90, 'incident_id': 'INC-2031'}}
+
+Case 2: Outage check — no known outage
+  -> {'ok': True, 'output': {'status': 'no_known_outage', 'area_code': 'KLA-12', 'eta_minutes': None, 'incident_id': None}}
+
+Case 3: Outage check — unknown area
+  -> {'ok': True, 'output': {'status': 'area_not_found', 'area_code': 'ZZZ-99', 'eta_minutes': None, 'incident_id': None}}
+
+Case 4: Outage check — missing area_code
+  -> {'ok': False, 'error_type': 'validation_error', 'message': 'area_code is required and must match format XXX-NN.'}
+
+Case 5: Outage check — simulated service unavailable
+  -> {'ok': False, 'error_type': 'unavailable', 'message': 'Outage-status service did not respond (simulated).'}
+
+Case 6: Create ticket — valid request, authorized
+  -> {'ok': True, 'output': {'ticket_id': 'TCK-D7B07601', 'status': 'pending_approval', 'created_at': '2026-09-25T10:23:05.050725+00:00'}}
+
+Case 7: Create ticket — missing description
+  -> {'ok': False, 'error_type': 'validation_error', 'message': 'Missing required field(s): description.'}
+
+Case 8: Create ticket — invalid category
+  -> {'ok': False, 'error_type': 'validation_error', 'message': "'billing_dispute' is not an approved category."}
+
+Case 9: Create ticket — unauthorized (customer_id mismatch)
+  -> {'ok': False, 'error_type': 'unauthorized', 'message': 'customer_id does not match the verified session — refusing to create a ticket on their behalf.'}
+
+Case 10: Create ticket — unknown tool name (unexpected request)
+  -> {'error_type': 'not_found', 'message': "Unknown tool 'cancel_service'."}
+
+=== Human-approval step (case 6's ticket) ===
+Before approval: [PendingTicket(ticket_id='TCK-D7B07601', customer_id='CUST-100', category='router_modem_issue', description='Router light blinking red for 2 days.', priority='medium', status='pending_approval', created_at='2026-09-25T10:23:05.050725+00:00')]
+approve_ticket() -> {'ticket_id': 'TCK-D7B07601', 'status': 'created', 'approved_by': 'human_agent_dennise'}
