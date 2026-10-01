@@ -2,6 +2,12 @@
 BY
 
 GROUP F
+	NAME	STUDENT NUMBER	REGISTRATION
+1	Buyinza Samuel	2300707787	23/U/07787/PS
+2	Bahati Brenda Kizito	2300707321	23/U/07321/EVE
+3	Aruho Priscillah	2300724960	23/U/24960
+4	Andimashimwe Rhoda	2300725067	23/X/25067/PS
+5	Nuwahereza Dennise	2300716238	23/U/16238/PS
 
 15-Case RAG Evaluation Results
 Cases were designed across three types; answerable, partially answerable, and deliberately unanswerable to test not just whether the system can find the right document, but whether it correctly refuses to ground an answer when the corpus has no real coverage. All results below are the actual output of running rag_pipeline.py against the corpus, not projected or illustrative values.

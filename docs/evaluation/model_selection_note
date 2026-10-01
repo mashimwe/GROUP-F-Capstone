@@ -1,0 +1,22 @@
+MODEL SELECTION NOTE
+BY
+
+GROUP F
+	NAME	STUDENT NUMBER	REGISTRATION
+1	Buyinza Samuel	2300707787	23/U/07787/PS
+2	Bahati Brenda Kizito	2300707321	23/U/07321/EVE
+3	Aruho Priscillah	2300724960	23/U/24960
+4	Andimashimwe Rhoda	2300725067	23/X/25067/PS
+5	Nuwahereza Dennise	2300716238	23/U/16238/PS
+Model Selection Note
+ServiceFlow’s Week 2 goal is the smallest useful model-backed capability: a foundation model that reads a customer's free-text description of an internet problem and classifies it into a supported category, before any retrieval, tools or agent behaviour are added. Three candidate models were compared against the capability, cost, latency, privacy and access considerations relevant to an eight-week, no-budget student project.
+
+Model	Capability	Cost	Latency	Privacy	Access
+Gemini 2.0 Flash (Google)	Strong instruction-following; reliable at short-text classification tasks like this one	Free tier (no billing required) with a generous daily request quota; paid tier available if usage grows	Fast — typically 1-3 seconds per call	Team will send only synthetic/public complaint text, never real customer data, regardless of tier	Google account + free API key from Google AI Studio; no institutional approval or payment method needed
+GPT-4o-mini (OpenAI)	Strong general reasoning and classification, comparable accuracy	No free tier — requires prepaid billing (minimum top-up)	Fast — typically 1-2 seconds per call	Standard API data-use terms; opt-out of training available	Requires an OpenAI account with billing configured — a barrier for a no-budget student project
+Llama 3.1 8B via Groq	Solid for well-scoped classification; less consistent on nuanced/ambiguous phrasing than the two above	Free tier with generous rate limits	Very fast (Groq's inference hardware is optimised for low latency)	Standard Groq API terms	Free signup, API key issued immediately
+
+Chosen model: Gemini 2.0 Flash (Google). 
+It is the only candidate that fully removes cost and billing-setup risk for the team while still offering low latency and reliable instruction-following on a bounded classification task. Data privacy is managed at the application level regardless of model choice: only synthetic or public complaint text will ever be sent, consistent with the Week 1 AI Boundary Matrix and the project's Out-of-Scope/Safety Boundaries (no real customer data).
+
+

@@ -1,0 +1,29 @@
+SERVICE FLOW
+BY
+GROUP F
+	NAME	STUDENT NUMBER	REGISTRATION
+1	Buyinza Samuel	2300707787	23/U/07787/PS
+2	Bahati Brenda Kizito	2300707321	23/U/07321/EVE
+3	Aruho Priscillah	2300724960	23/U/24960
+4	Andimashimwe Rhoda	2300725067	23/X/25067/PS
+5	Nuwahereza Dennise	2300716238	23/U/16238/PS
+
+An AI-Powered Internet Service Help-Desk Triage Agent — Group F
+FAILURE / AUTHORIZATION TEST EVIDENCE
+10 test cases were run covering normal use, missing parameters, an unauthorized request, a simulated unavailable service, and an unsupported tool name. All results below are from an actual run of tools.py, not projected.
+#	Test case	Category	Actual result (real run)
+1	Outage check — confirmed outage in area	Normal	status: outage_confirmed, eta_minutes: 90, incident_id: INC-2031 — Pass
+2	Outage check — no known outage	Normal	status: no_known_outage — Pass
+3	Outage check — unknown area code	Edge case	status: area_not_found — Pass
+4	Outage check — missing area_code parameter	Missing parameter	error_type: validation_error, “area_code is required and must match format XXX-NN.” — Pass
+5	Outage check — simulated backend service down	Unavailable service	error_type: unavailable, “Outage-status service did not respond (simulated).” — Pass (see genuine-failure note below)
+6	Create ticket — valid request, authorized	Normal	status: pending_approval, ticket_id issued — Pass. Does NOT reach “created” until separately approved.
+7	Create ticket — missing description field	Missing parameter	error_type: validation_error, “Missing required field(s): description.” — Pass
+8	Create ticket — invalid category (“billing_dispute”)	Invalid input	error_type: validation_error, “'billing_dispute' is not an approved category.” — Pass
+9	Create ticket — customer_id does not match verified session	Unauthorized request	error_type: unauthorized, request refused — Pass
+10	Call an undefined tool (“cancel_service”)	Unexpected/unsupported request	error_type: not_found, “Unknown tool 'cancel_service'.” — Pass
+
+Genuine failure found and fixed during testing
+Case 5 (simulated service unavailable) initially failed for the wrong reason: the mock “service down” area code did not match the area_code format check, so it was rejected as a validation_error before the code ever reached the outage-status lookup that was supposed to raise “unavailable.” This masked the failure path we actually needed to test. The fix was to give the simulated-down area a code in the correct format (DWN-99) so it passes validation and correctly reaches the unavailable branch. This is left in as documented evidence rather than silently corrected, since it demonstrates a real class of bug: validation order can accidentally hide the failure case you meant to test.
+Human-approval flow, verified
+After Case 6 creates a ticket (status: pending_approval), calling approve_ticket (ticket_id, approved_by="human_agent_dennise") is the only way its status becomes created. No code path inside create_support_ticket itself can set status to created — the approval step is a structurally separate function, not a flag the AI or the customer can set.
