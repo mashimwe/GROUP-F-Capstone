@@ -1,0 +1,11 @@
+SERVICE FLOW
+An AI-Powered Internet Service Help-Desk Triage Agent -Group F
+AGENT TASK CONTRACT
+Field	Specification
+Goal	Given one customer message (and any known account context), resolve the issue end to end: classify it, check outage status if relevant, ground an answer in the troubleshooting knowledge base, and if still unresolved, create a support ticket-stopping at a safe, well-defined point rather than looping indefinitely or taking an unapproved action.
+Approved tools / actions	classify (Week 2 slot), check_outage_status (Week 4, read-only), retrieve_and_answer (Week 3 RAG), ask_clarifying_question, create_support_ticket (Week 4, side-effecting). No other action may be taken -the Act step only recognises these five names.
+State tracked	message, context (customer_id, area_code), iteration count, category, outage_checked /outage_result / outage_retry_count, rag_attempted / rag_answer / resolved, clarification_asked, ticket_id, stopped / stop_reason, and a full step-by-step trace log.
+Limits	max_iterations = 6 per customer message (hard cap, forces a stop even if no clean resolution is found). max_tool_retries = 1 per tool per message (a failing tool is tried at most twice before the agent moves on).
+Stop conditions	(1) stop_resolved -RAG answer cleared the similarity threshold, or the outage tool returned a confirmed outage. (2) stop_waiting_for_customer — a clarifying question was asked; the agent pauses for the customer's reply rather than guessing. (3) stop_handoff_pending_approval-a ticket was created; it stays pending_approval until a human approves it (Week 4's approval gate, unchanged). (4) stop_max_iterations_reached-safety net if none of the above is reached within 6 steps.
+Human hand-off / approval conditions	Every created ticket requires human approval before it is treated as created (inherited unchanged from Week 4). Hitting max_iterations always hands off to a human agent rather than retrying silently. A tool that is still unavailable after its retry budget is not retried further within the same run- the agent falls back to an alternative approved action instead of stalling.
+
