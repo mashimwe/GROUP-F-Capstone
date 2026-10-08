@@ -169,8 +169,17 @@ def act(action: str, state: AgentState):
 
     elif action == "create_support_ticket":
         priority = "high" if state.category in ("no_connection", "possible_outage") else "medium"
+        # Week 6 addition: if the memory layer (agent_with_memory.py) flagged a
+        # likely duplicate before this run started, surface it to the human
+        # reviewer in the ticket description. This is the ONLY line Week 6 adds
+        # to Week 5's agent.py — it never blocks or auto-resolves anything;
+        # the ticket is still created and still requires approval either way.
+        description = state.message
+        duplicate_of = state.context.get("possible_duplicate_of")
+        if duplicate_of:
+            description = f"[Possible duplicate of {duplicate_of} — see case history] {description}"
         args = {"customer_id": state.context.get("verified_customer_id"), "category": state.category,
-                "description": state.message, "priority": priority}
+                "description": description, "priority": priority}
         result = call_tool("create_support_ticket", args, state.context)
         if result["result"].get("ok"):
             state.ticket_id = result["result"]["output"]["ticket_id"]
