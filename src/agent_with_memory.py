@@ -38,6 +38,12 @@ def outcome_of(state) -> str:
 def run_agent_with_memory(message: str, context: dict, store: CaseHistoryStore, within_hours: int = 24):
     customer_id = context.get("verified_customer_id")
 
+    # Week 7: anonymous/unverified sessions never read or write persistent memory.
+    # Otherwise every anonymous user would share one "None" history and could be
+    # shown another anonymous user's prior ticket reference.
+    if not customer_id:
+        return run_agent(message, dict(context)), None
+
     # Touch-point 1: a lightweight pre-check for a likely duplicate. This uses
     # the SAME classify() the agent itself will call again — it is cheap and
     # deterministic, so calling it twice costs nothing but a few milliseconds

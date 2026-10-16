@@ -35,7 +35,10 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-KNOWLEDGE_DIR = os.path.join(os.path.dirname(__file__), "knowledge")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# Works with knowledge/ next to this file, or one level up (src/ + top-level knowledge/ repo layout).
+KNOWLEDGE_DIR = next((p for p in (os.path.join(_HERE, "knowledge"), os.path.join(_HERE, "..", "knowledge"))
+                      if os.path.isdir(p)), os.path.join(_HERE, "knowledge"))
 
 
 # ---------------------------------------------------------------------------

@@ -151,7 +151,7 @@ TOOLS = {"check_outage_status": check_outage_status, "create_support_ticket": cr
 def call_tool(tool_name: str, args: dict, context: dict) -> dict:
     trace = {"tool": tool_name, "args": args, "context": context}
     if tool_name not in TOOLS:
-        trace["result"] = {"error_type": "not_found", "message": f"Unknown tool '{tool_name}'."}
+        trace["result"] = {"ok": False, "error_type": "not_found", "message": f"Unknown tool '{tool_name}'."}
         return trace
     try:
         trace["result"] = {"ok": True, "output": TOOLS[tool_name](args, context)}
