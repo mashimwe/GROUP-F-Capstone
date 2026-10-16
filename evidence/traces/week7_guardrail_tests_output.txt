@@ -1,0 +1,21 @@
+﻿PASS  output: unsupported outage claim is caught  [['unsupported_outage_claim']]
+PASS  output: outage claim ALLOWED when the tool confirmed it
+PASS  output: another customer's id is caught  [['other_customer_id_in_response']]
+PASS  output: sensitive term is caught  [['sensitive_term_in_response']]
+PASS  output: false finality claim is caught  [['false_finality_claim']]
+PASS  output: RAG answer without a citation is caught  [['missing_source_citation']]
+PASS  output: over-long response is caught  [['response_too_long']]
+PASS  output: negated/uncertain outage wording is NOT a false positive
+PASS  input: control characters are stripped  [my internet is down]
+PASS  input: over-length message is blocked
+PASS  input: non-string input is blocked
+PASS  input: benign 'ignore' wording is NOT blocked (no false positive)
+PASS  fail-safe: internal exception is contained with guardrails ON  [error_failsafe]
+PASS  fail-safe: exception propagates with guardrails OFF (baseline behaviour)
+PASS  iteration limit: a never-stopping planner is cut off at MAX_ITERATIONS  [iterations=6]
+PASS  allow-list: an unapproved action is refused and handed to a human  [stop_escalated_human]
+PASS  authorization: ticket for a different customer is refused  [unauthorized]
+PASS  approval control: a new ticket is always pending_approval, never created  [pending_approval]
+PASS  approval control: no tool exists that can approve a ticket
+
+19/19 guardrail tests passed
