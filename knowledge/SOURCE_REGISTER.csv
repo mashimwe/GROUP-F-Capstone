@@ -1,0 +1,16 @@
+﻿doc_id,title,category,provenance,version
+doc01_no_connection_power_cycle,Power-cycling your router and modem to restore a lost connection,no_connection,"Team-authored, based on common ISP self-help conventions (synthetic, no proprietary content)",v1.0
+doc02_no_connection_ont_lights,Reading ONT / modem status lights when there is no connection at all,no_connection,"Team-authored, synthetic",v1.1 (customer voice)
+doc03_slow_too_many_devices,Slow speeds caused by too many connected devices,slow_connection,"Team-authored, synthetic",v1.1 (customer voice)
+doc04_slow_wifi_interference,Slow Wi-Fi caused by channel interference or distance from the router,slow_connection,"Team-authored, synthetic",v1.0
+doc05_slow_dns_cache,Slow-feeling browsing caused by DNS or browser cache issues,slow_connection,"Team-authored, synthetic",v1.0
+doc06_intermittent_overheating,Intermittent drops caused by router overheating,intermittent_connection,"Team-authored, synthetic",v1.0
+doc07_intermittent_loose_cable,Intermittent drops caused by a loose or damaged cable connection,intermittent_connection,"Team-authored, synthetic",v1.1 (customer voice)
+doc08_intermittent_firmware,Intermittent connection caused by outdated router firmware,intermittent_connection,"Team-authored, synthetic",v1.0
+doc09_router_light_meanings,What the router's light colours and patterns usually mean,router_modem_issue,"Team-authored, synthetic",v1.1 (customer voice)
+doc10_router_factory_reset,When and how to factory reset a router,router_modem_issue,"Team-authored, synthetic",v1.0
+doc11_router_old_equipment,Persistent router issues caused by old or failing equipment,router_modem_issue,"Team-authored, synthetic",v1.0
+doc12_outage_how_to_check,How we check whether there is an outage in your area,possible_outage,"Team-authored, synthetic",v1.1 (customer voice)
+doc13_outage_what_to_do_while_waiting,What to do while we confirm a possible outage,possible_outage,"Team-authored, synthetic",v1.1 (customer voice)
+doc14_speed_test_howto,How to run a reliable home speed test,general_faq,"Team-authored, synthetic",v1.0
+doc15_wifi_password_change,How to change your Wi-Fi network name and password,general_faq,"Team-authored, synthetic",v1.0

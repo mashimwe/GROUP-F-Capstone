@@ -22,3 +22,5 @@ build/
 # Data you should not commit
 knowledge/raw/
 *.sqlite3
+
+.pytest_cache/

@@ -5,9 +5,8 @@ Adds a controlled, traceable knowledge source on top of the Week 2
 classification baseline. This script implements ingestion, chunking,
 indexing and retrieval end-to-end and runs entirely offline (no API key
 needed) — you can run this yourself right now to reproduce every result
-in the 15-case evaluation table. Only the final answer-generation step
-(turning retrieved evidence into a natural-language reply) needs the
-Gemini API key from Week 2.
+in the 15-case evaluation table. Customer-facing text is composed deterministically from the retrieved
+chunk by responder.py (no generative step), so every answer is traceable to a source document.
 
 Pipeline stages
 ---------------
@@ -16,7 +15,6 @@ Pipeline stages
 3. Indexing    : TF-IDF vectorisation of all chunks
 4. Retrieval   : cosine similarity, top-k chunks per query
 5. Grounding   : assemble retrieved chunks + source citations into context
-6. Generation  : (needs GEMINI_API_KEY) answer using ONLY that context
 
 Chunking design note
 ---------------------
@@ -97,38 +95,6 @@ def build_context(retrieved):
     for r in retrieved:
         lines.append(f"[Source: {r['id']} — {r['title']}]\n{r['chunk_text']}")
     return "\n\n".join(lines)
-
-
-GENERATION_PROMPT_TEMPLATE = """You are ServiceFlow, a bounded triage assistant for an internet
-service provider's help desk.
-
-Answer the customer's question using ONLY the retrieved context below.
-Cite the source document title for any claim you make. If the context does
-not contain enough information to answer, say so explicitly, do not guess,
-and suggest the report be escalated to a human agent for the parts you
-cannot answer.
-
-RETRIEVED CONTEXT:
-{context}
-
-CUSTOMER QUESTION:
-{question}
-"""
-
-
-def generate_grounded_answer(question, retrieved):
-    """Stage 6 — needs GEMINI_API_KEY (see Week 2's serviceflow_baseline.py setup)."""
-    from google import genai
-
-    context = build_context(retrieved)
-    if context is None:
-        return ("I don't have information on that in my current knowledge base, "
-                "so I can't answer confidently. I'm escalating this to a human agent.")
-
-    prompt = GENERATION_PROMPT_TEMPLATE.format(context=context, question=question)
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-    return response.text.strip()
 
 
 # ---------------------------------------------------------------------------

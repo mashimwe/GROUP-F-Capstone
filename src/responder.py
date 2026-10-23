@@ -7,6 +7,8 @@ a tool result or a retrieved document, and every RAG-based answer carries a
 [Source: <doc id>] citation so groundedness can be checked mechanically.
 """
 
+from guardrails import GUIDE_MARKER
+
 
 def _top_hit(state):
     for step in reversed(state.trace):
@@ -44,13 +46,14 @@ def compose_response(state) -> str:
                     "No action is needed from you.")
         hit = _top_hit(state)
         if hit:
-            return (f"{prefix}Here is guidance from our troubleshooting guide "
+            return (f"{prefix}{GUIDE_MARKER} "
                     f"\"{hit['title']}\" [Source: {hit['id']}]: {hit['chunk_text']}")
         return prefix + "I found guidance for this but couldn't display it; a human agent will follow up."
 
     if reason == "stop_waiting_for_customer":
-        return (prefix + "Could you tell me more about what's happening with your connection? "
-                "For example: no connection, slow speeds, or the connection dropping.")
+        return (prefix + "Could you tell me a little more? For example: is it no connection, slow speeds or a "
+                "connection that keeps dropping, when did it start, are you on Wi-Fi or a cable, and what "
+                "colour are the lights on your router?")
 
     if reason == "stop_handoff_pending_approval":
         return (f"{prefix}I couldn't find a confident answer in our guides, so I've prepared support ticket "

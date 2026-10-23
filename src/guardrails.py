@@ -14,6 +14,12 @@ import unicodedata
 
 MAX_INPUT_CHARS = 1000
 MAX_OUTPUT_CHARS = 1500
+# Everything before this marker is written by the system; everything after is quoted, human-approved guide text.
+GUIDE_MARKER = "Here is guidance from our troubleshooting guide"
+
+
+def system_authored_part(response: str) -> str:
+    return response.split(GUIDE_MARKER, 1)[0]
 
 # (regex, rule name) — applied to a normalised copy of the message
 INJECTION_RULES = [
@@ -29,6 +35,12 @@ INJECTION_RULES = [
     (r"\b(other|all|every)\b[^.]{0,15}\bcustomers?\b[^.]{0,30}\b(tickets?|data|accounts?|records?)\b", "cross_customer_data"),
     (r"\b(all|every)\b[^.]{0,15}\btickets?\b", "cross_customer_data"),
     (r"\bapprove\b[^.]{0,20}\b(this|my|the|that)\b[^.]{0,10}\bticket\b", "approval_bypass_attempt"),
+    (r"\b(ignore|disregard|forget|bypass|override)\b[^.]{0,25}\b(polic(y|ies)|restrictions?|safeguards?|programming)\b", "override_instructions"),
+    (r"\b(what|which)\b[^.?]{0,30}\b(were you|have you been|you were)\b[^.?]{0,10}\b(given|told)\b", "prompt_extraction"),
+    (r"\b(instructions|rules|prompt|guidelines)\b[^.?]{0,20}\b(you were|you've been|were you|have you been)\b[^.?]{0,10}\b(given|told)\b", "prompt_extraction"),
+    (r"\brepeat\b[^.]{0,20}\b(word for word|verbatim)\b", "prompt_extraction"),
+    (r"\bfrom now on\b[^.]{0,40}\b(act|behave|respond|answer|ignore|you (will|must|are|should))\b", "role_override"),
+    (r"\bact as\b[^.]{0,30}\b(assistant|admin|developer|system|unrestricted)\b", "role_override"),
 ]
 
 _LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"})
@@ -94,7 +106,9 @@ def validate_output(response: str, state, context: dict) -> dict:
     violations = []
     out = state.outage_result if isinstance(state.outage_result, dict) else {}
 
-    if OUTAGE_CLAIM.search(response) and out.get("status") != "outage_confirmed":
+    # Claim checks apply to what the SYSTEM asserts, not to quoted approved guide text, which may
+    # legitimately contain negated or conditional wording such as "we will never say there is an outage unless...".
+    if OUTAGE_CLAIM.search(system_authored_part(response)) and out.get("status") != "outage_confirmed":
         violations.append("unsupported_outage_claim")
 
     allowed_ids = {context.get("verified_customer_id")}
