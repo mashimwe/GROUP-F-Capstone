@@ -18,6 +18,7 @@ import agent
 import guardrails
 from agent_with_memory import run_agent_with_memory
 from observability import fingerprint, steps_from_state
+from case_session import CaseSession
 from responder import compose_response
 
 FAILSAFE_MESSAGE = "Something went wrong on our side, so I'm passing this to a human agent."
@@ -25,8 +26,9 @@ FAILSAFE_MESSAGE = "Something went wrong on our side, so I'm passing this to a h
 
 def components(guardrails_enabled: bool) -> dict:
     return {
-        "classifier": "keyword_stand_in_v1 (Week 5)",
-        "classifier_prompt_version_in_production_slot": "v1.1 (Week 2 Gemini prompt; not invoked in offline evaluation)",
+        "classifier_mode": __import__("classifier").get_mode(),
+        "classifier_model": __import__("classifier").get_model(),
+        "classifier_prompt_version": "v1.1",
         "retriever": "TF-IDF cosine, k=3",
         "resolution_threshold": agent.RESOLUTION_THRESHOLD,
         "max_iterations": agent.MAX_ITERATIONS,
@@ -35,7 +37,7 @@ def components(guardrails_enabled: bool) -> dict:
     }
 
 
-def handle_customer_message(message, context, store, tracer=None, guardrails_enabled=True, scenario_id=None):
+def handle_customer_message(message, context, store, tracer=None, guardrails_enabled=True, scenario_id=None, session=None):
     run_id = uuid.uuid4().hex[:12]
     t0 = time.perf_counter()
     events, error, state, duplicate = [], None, None, None
@@ -51,8 +53,28 @@ def handle_customer_message(message, context, store, tracer=None, guardrails_ena
             else:
                 message = gv["cleaned"]
 
+        continued = False
+        if session is not None:
+            session.bind(context.get("verified_customer_id"))
+            effective = session.effective_message(message)
+            continued = effective != message
+            if continued and guardrails_enabled:
+                # the combined text is re-checked: an injection could be split across two turns
+                gv2 = guardrails.validate_input(effective)
+                events += [e for e in gv2["events"] if e["type"] != "control_chars_stripped"]
+                if not gv2["ok"]:
+                    stop_reason, response = "blocked_by_guardrail", gv2["safe_message"]
+            message_for_agent = effective
+        else:
+            message_for_agent = message
+
         if response is None:
-            state, duplicate = run_agent_with_memory(message, context, store)
+            agent_context = dict(context)
+            if session is not None:
+                agent_context["clarification_rounds"] = session.rounds
+            if continued:
+                agent_context["latest_message"] = message
+            state, duplicate = run_agent_with_memory(message_for_agent, agent_context, store)
             stop_reason = state.stop_reason
             response = compose_response(state)
             if guardrails_enabled:
@@ -68,6 +90,8 @@ def handle_customer_message(message, context, store, tracer=None, guardrails_ena
         events.append({"type": "failsafe_triggered", "error": error})
         stop_reason, response = "error_failsafe", FAILSAFE_MESSAGE
 
+    if session is not None and state is not None:
+        session.update(message, stop_reason)  # only successfully processed turns enter the session
     record = _trace(tracer, run_id, scenario_id, original, context, events, state, duplicate, stop_reason, response, error, t0, guardrails_enabled)
     return {"run_id": run_id, "stop_reason": stop_reason, "response": response, "state": state,
             "duplicate": duplicate, "events": events, "latency_ms": record["latency_ms"], "error": error}
@@ -83,6 +107,7 @@ def _trace(tracer, run_id, scenario_id, original, context, events, state, duplic
         "components": components(gr),
         "guardrail_events": events,
         "category": state.category if state else None,
+        "classifier_source": next((st["detail"].get("source") for st in (state.trace if state else []) if st["action"] == "classify"), None),
         "steps": steps,
         "retrieval": retrieval,
         "tool_calls": tools,

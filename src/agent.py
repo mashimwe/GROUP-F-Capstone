@@ -14,16 +14,11 @@ classify -> (check outage if relevant) -> ground an answer in the knowledge
 base -> if still unresolved, create a (pending) support ticket -> always
 stop at a safe, defined point rather than looping indefinitely.
 
-Engineering note on classification
------------------------------------
-Week 2 already tested a Gemini-backed classifier; Week 3 already tested the
-RAG retriever. This week is about the agent LOOP and its bounds, not about
-re-testing either of those. So the "plan" step here reuses the real, offline
-RagIndex from Week 3 unchanged, but stands in a lightweight deterministic
-keyword classifier in place of Week 2's Gemini call, purely so every trace
-in this document is fully reproducible offline without an API key. The
-production version plugs classify_problem() from serviceflow_baseline.py
-into the same slot (see classify() below).
+Classification
+--------------
+classify() delegates to classifier.py: the Gemini model when configured, with a
+validated, deterministic keyword fallback. Offline tests and the evaluation
+harness force the keyword mode so results are reproducible without an API key.
 """
 
 import os
@@ -34,13 +29,15 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 sys.path.insert(0, os.path.dirname(__file__))
-from rag_pipeline import load_corpus, RagIndex          # Week 3, unchanged
+import classifier                                        # Week 8: model slot with safe fallback
+from rag_pipeline import load_corpus, RagIndex          # Week 3
 from tools import call_tool                              # Week 4, unchanged
 
 MAX_ITERATIONS = 6
 MAX_TOOL_RETRIES = 1
 RESOLUTION_THRESHOLD = 0.15  # same similarity floor used in Week 3's evaluation
 UNCLEAR_FAQ_THRESHOLD = 0.15  # Week 7: threshold when the category is unclear (FAQ docs only)
+MAX_CLARIFICATION_ROUNDS = 2  # User Story 5: never keep asking; after this many questions the case is handed on
 RETRYABLE_ERRORS = {"unavailable"}  # Week 7: only transient errors are retried
 VALID_OUTAGE_STATUSES = {"outage_confirmed", "no_known_outage", "area_not_found"}
 RELATED_CATEGORIES = {
@@ -55,22 +52,11 @@ APPROVED_TOOLS = ["classify", "check_outage_status", "retrieve_and_answer",
 
 
 # ---------------------------------------------------------------------------
-# Week-5-only stand-in for the Week 2 classifier (see module docstring)
+# Classification: delegated to classifier.py (Gemini with validated keyword fallback)
 # ---------------------------------------------------------------------------
-KEYWORD_RULES = [
-    ("possible_outage", ["outage", "everyone", "neighbour", "neighbor", "area"]),
-    ("no_connection", ["no internet", "completely down", "nothing works", "no wifi", "dead"]),
-    ("intermittent_connection", ["drops", "keeps dropping", "comes back", "on and off"]),
-    ("router_modem_issue", ["router", "modem", "light", "blinking"]),
-    ("slow_connection", ["slow", "buffering", "streaming"]),
-]
-
 def classify(message: str) -> dict:
-    text = message.lower()
-    for category, keywords in KEYWORD_RULES:
-        if any(k in text for k in keywords):
-            return {"category": category, "confidence": "medium"}
-    return {"category": "unclear", "confidence": "low"}
+    """{category, confidence, source[, fallback_reason]} — see classifier.py. Never raises."""
+    return classifier.classify(message)
 
 
 # ---------------------------------------------------------------------------
@@ -124,8 +110,9 @@ def plan_next_action(state: AgentState) -> str:
     if state.resolved:
         return "stop_resolved"
 
-    if state.category == "unclear":
+    if state.category == "unclear" and state.context.get("clarification_rounds", 0) < MAX_CLARIFICATION_ROUNDS:
         return "stop_waiting_for_customer" if state.clarification_asked else "ask_clarifying_question"
+    # (an "unclear" case that has already been asked twice falls through to the ticket / verification path)
 
     # Week 7: a failed ticket creation is NOT retried; hand off to a human instead.
     if state.ticket_error:
@@ -138,6 +125,30 @@ def plan_next_action(state: AgentState) -> str:
         return "create_support_ticket"
 
     return "stop_handoff_pending_approval"
+
+
+def build_ticket_description(state: "AgentState") -> str:
+    """User Story 7: the ticket carries the issue, the category, what the system already
+    tried (status check, retrieval) and an explicit human-follow-up flag."""
+    parts = []
+    duplicate_of = state.context.get("possible_duplicate_of")
+    if duplicate_of:
+        parts.append(f"[Possible duplicate of {duplicate_of} — see case history]")
+    parts.append(f"Customer report: {state.message[:500]}")
+    parts.append(f"System category: {state.category}.")
+    out = state.outage_result if isinstance(state.outage_result, dict) else None
+    if out:
+        parts.append(f"Outage check: {out.get('status')}"
+                     + (f" (incident {out['incident_id']})" if out.get("incident_id") else "") + ".")
+    elif state.category == "possible_outage":
+        parts.append("Outage check: not completed.")
+    if state.rag_attempted:
+        if state.resolved and state.rag_answer:
+            parts.append(f"Guide offered: {state.rag_answer.get('top_source')}.")
+        else:
+            parts.append("Troubleshooting guides: no guide matched confidently, so none was offered.")
+    parts.append("HUMAN FOLLOW-UP REQUIRED. No infrastructure change has been made.")
+    return " ".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -188,8 +199,19 @@ def act(action: str, state: AgentState):
 
     elif action == "retrieve_and_answer":
         index = get_rag_index()
-        query = normalise_query(state.message)
-        candidates = index.retrieve(query, k=20, min_score=0.0)
+        # Week 8: when a case continues after a clarification, the customer's newest message is the
+        # most informative query; joining it to a vague first message dilutes the similarity score.
+        # Try the newest message first, then the whole case, and keep whichever matches better.
+        latest = state.context.get("latest_message")
+        queries = [normalise_query(state.message)]
+        if latest and latest != state.message:
+            queries.insert(0, normalise_query(latest))
+        candidates, best = [], -1.0
+        for q in queries:
+            found = index.retrieve(q, k=20, min_score=0.0)
+            top_score = found[0]["score"] if found else 0.0
+            if top_score > best:
+                candidates, best = found, top_score
         # Week 7: category-consistency gate (revised after re-test round 1).
         #  - possible_outage docs may only ground possible_outage complaints
         #  - equipment/connection categories may borrow from related categories
@@ -221,10 +243,7 @@ def act(action: str, state: AgentState):
         # reviewer in the ticket description. This is the ONLY line Week 6 adds
         # to Week 5's agent.py — it never blocks or auto-resolves anything;
         # the ticket is still created and still requires approval either way.
-        description = state.message
-        duplicate_of = state.context.get("possible_duplicate_of")
-        if duplicate_of:
-            description = f"[Possible duplicate of {duplicate_of} — see case history] {description}"
+        description = build_ticket_description(state)
         args = {"customer_id": state.context.get("verified_customer_id"), "category": state.category,
                 "description": description, "priority": priority}
         result = call_tool("create_support_ticket", args, state.context)

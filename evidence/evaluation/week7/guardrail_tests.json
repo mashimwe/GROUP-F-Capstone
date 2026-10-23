@@ -1,0 +1,113 @@
+{
+ "passed": 19,
+ "total": 19,
+ "tests": [
+  {
+   "test": "output: unsupported outage claim is caught",
+   "passed": true,
+   "detail": [
+    "unsupported_outage_claim"
+   ]
+  },
+  {
+   "test": "output: outage claim ALLOWED when the tool confirmed it",
+   "passed": true,
+   "detail": []
+  },
+  {
+   "test": "output: another customer's id is caught",
+   "passed": true,
+   "detail": [
+    "other_customer_id_in_response"
+   ]
+  },
+  {
+   "test": "output: sensitive term is caught",
+   "passed": true,
+   "detail": [
+    "sensitive_term_in_response"
+   ]
+  },
+  {
+   "test": "output: false finality claim is caught",
+   "passed": true,
+   "detail": [
+    "false_finality_claim"
+   ]
+  },
+  {
+   "test": "output: RAG answer without a citation is caught",
+   "passed": true,
+   "detail": [
+    "missing_source_citation"
+   ]
+  },
+  {
+   "test": "output: over-long response is caught",
+   "passed": true,
+   "detail": [
+    "response_too_long"
+   ]
+  },
+  {
+   "test": "output: negated/uncertain outage wording is NOT a false positive",
+   "passed": true,
+   "detail": []
+  },
+  {
+   "test": "input: control characters are stripped",
+   "passed": true,
+   "detail": "my internet is down"
+  },
+  {
+   "test": "input: over-length message is blocked",
+   "passed": true,
+   "detail": ""
+  },
+  {
+   "test": "input: non-string input is blocked",
+   "passed": true,
+   "detail": ""
+  },
+  {
+   "test": "input: benign 'ignore' wording is NOT blocked (no false positive)",
+   "passed": true,
+   "detail": ""
+  },
+  {
+   "test": "fail-safe: internal exception is contained with guardrails ON",
+   "passed": true,
+   "detail": "error_failsafe"
+  },
+  {
+   "test": "fail-safe: exception propagates with guardrails OFF (baseline behaviour)",
+   "passed": true,
+   "detail": ""
+  },
+  {
+   "test": "iteration limit: a never-stopping planner is cut off at MAX_ITERATIONS",
+   "passed": true,
+   "detail": "iterations=6"
+  },
+  {
+   "test": "allow-list: an unapproved action is refused and handed to a human",
+   "passed": true,
+   "detail": "stop_escalated_human"
+  },
+  {
+   "test": "authorization: ticket for a different customer is refused",
+   "passed": true,
+   "detail": "unauthorized"
+  },
+  {
+   "test": "approval control: a new ticket is always pending_approval, never created",
+   "passed": true,
+   "detail": "pending_approval"
+  },
+  {
+   "test": "approval control: no tool exists that can approve a ticket",
+   "passed": true,
+   "detail": ""
+  }
+ ]
+}

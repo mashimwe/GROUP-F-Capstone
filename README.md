@@ -1,72 +1,113 @@
-# ServiceFlow — AI-Powered Internet Service Help-Desk Triage Agent
+# ServiceFlow — an AI-assisted internet help-desk triage agent
 
-**Course:** BSE4104 — Emerging Trends in Software Engineering (AI-Native & Agentic Engineering Capstone)
-**Institution:** Makerere University, College of Computing and Information Sciences, Department of Networks
-**Academic Year:** 2026/2027
+**BSE4104 AI-Native & Agentic Engineering Capstone · Group F · Release v1.0.0**
 
-## Team
+ServiceFlow helps customers of an internet service provider with connection problems. It classifies the
+problem, checks outage status through an approved tool, answers from a controlled troubleshooting knowledge
+base **with a cited source**, and, when it cannot answer confidently, prepares a support ticket that **a human
+must approve**. It is deliberately *bounded*: it cannot change infrastructure, approve its own tickets, or act
+outside a fixed list of tools. All data in this repository is synthetic.
 
-| Name | Role | GitHub handle |
-| --- | --- | --- |
-| Andimashimwe Rhoda | Application/Integration Lead | @mashimwe |
-| Priscillah Aruho | Project/Requirements Lead | @aruhoPriscillah |
-| Bahati Brenda Kizito | DevOps/Documentation Lead | @Bahati-bk |
-| Samuel Buyinza | Quality/Security Lead | @buyinzasamuel |
-| Dennise Nuwahereza | AI Engineering Lead | @Dennise-Nuwahereza |
-
-## Problem Statement
-
-ServiceFlow is a bounded AI-powered help-desk triage system for internet service
-customers. It interprets a customer's reported problem, classifies the issue,
-retrieves troubleshooting guidance from an approved knowledge base, checks a
-simulated network/outage status, and determines an appropriate next step —
-creating and routing a simulated support ticket when the issue cannot be
-resolved through guidance alone.
-
-> Our system helps internet service customers triage and report connectivity
-> problems through a guided, AI-assisted workflow. AI is used for understanding
-> and classifying user-reported issues, retrieving relevant troubleshooting
-> information from an approved knowledge base, and selecting among approved
-> next actions. Deterministic software remains responsible for data validation,
-> service-status retrieval, authorization, ticket creation and workflow limits.
-> The agent may use approved tools to search the troubleshooting knowledge base,
-> check simulated service or outage status, and create or route a support
-> ticket, but may not remotely control infrastructure or automatically
-> disconnect, reconnect or modify any service. We will build and evaluate the
-> system using public service-help content together with team-created or
-> synthetic service incidents, outage records and support-ticket data.
-
-## Repository Structure
+## How it works
 
 ```
-README.md
-docs/
-  requirements/       # Project Charter, user stories, AI Boundary Matrix
-  architecture/        # Architecture/context diagrams
-  weekly-reports/      # One report per week (1-2 pages each)
-  evaluation/           # Evaluation datasets, results, failure catalogues
-prompts/               # Versioned prompt specifications
-knowledge/              # Corpus metadata/provenance (not restricted data)
-src/                    # Application source code
-tests/                  # Automated tests
-evidence/
-  traces/               # Agent/RAG execution traces
-  screenshots/          # UI and tool-run screenshots
-  demo/                 # Demo recordings/assets
-.env.example            # Template for required env vars — never commit real secrets
+customer message
+   -> input guardrails (length, control chars, prompt-injection rules)
+   -> classifier (Gemini, validated; keyword fallback)            src/classifier.py
+   -> bounded agent loop (max 6 steps, allow-listed actions)      src/agent.py
+        |-- check_outage_status  (read-only tool)                 src/tools.py
+        |-- retrieve guides (TF-IDF, category-gated, cited)       src/rag_pipeline.py
+        `-- create_support_ticket -> PENDING_APPROVAL (human approves)
+   -> response composer (deterministic, cites sources)            src/responder.py
+   -> output guardrails -> structured trace (no raw message text) src/observability.py
+```
+Session state (`src/case_session.py`, one open case) and persistent memory (`src/memory_store.py`, minimal
+case history for duplicate-ticket hints) are separate objects with separate lifetimes.
+
+## Quick start (about 3 minutes, no API key needed)
+
+```bash
+git clone https://github.com/mashimwe/GROUP-F-Capstone.git && cd GROUP-F-Capstone
+python -m venv .venv && source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+python -m pytest                                           # 79 tests, offline
+SERVICEFLOW_CLASSIFIER=keyword python src/run_demo.py      # scripted 7-scene demo (Windows: set the variable first)
+SERVICEFLOW_CLASSIFIER=keyword python src/run_demo.py --interactive
 ```
 
-## Status
+## Using the Gemini model (optional, needs your own key)
 
-Week 1 complete — Project Charter, user stories, AI Boundary Matrix and initial
-architecture diagram are in `docs/requirements/` and `docs/architecture/`. Week
-1 progress report to be completed in `docs/weekly-reports/`.
+```bash
+export GEMINI_API_KEY=your-key          # never commit it; see .env.example
+python src/run_demo.py                  # auto mode: uses Gemini when a key is set
+python src/gemini_eval.py               # Gemini vs keyword accuracy -> evidence/evaluation/classifier_comparison.*
+python src/eval_harness.py gemini_dev on --set dev --classifier gemini --out evidence/evaluation
+```
+The model is treated as untrusted: its reply must be valid JSON with an allowed category, low confidence is
+treated as "unclear", and any error/timeout falls back to keyword rules (logged in the trace). Default model
+`gemini-3.5-flash-lite`; override with `GEMINI_MODEL`. (`gemini-2.0-flash` was shut down on 2026-06-01.)
+Free-tier requests may be used by Google to improve its products, so **send only synthetic text**.
 
-## Setup / Run Instructions
+## Reproduce the evaluation
 
-_(To be completed as the application is built — from Week 2 onward.)_
+| Command | What it does |
+|---|---|
+| `python src/eval_harness.py dev on --set dev --out evidence/evaluation` | 46 development scenarios (normal, edge, incorrect info, adversarial, tool failure, unauthorized) |
+| `python src/eval_harness.py held on --set heldout --out evidence/evaluation` | 20 held-out scenarios written before the first run |
+| `python src/guardrail_tests.py` | 19 targeted guardrail tests |
+| `python src/eval_harness.py base off --set dev --out /tmp/x` | same set with guardrails off (the "before" system) |
 
-## Links
+## Results (offline keyword classifier, reproducible)
 
-- ClickUp board: [link]
-- Latest weekly report: `docs/weekly-reports/`
+| Evaluation | Result |
+|---|---|
+| Unit/integration tests (pytest) | 79 pass |
+| Development set (46) | **44/46 (95.7%)**, 0 safety violations, 0 crashes (was 25/46 before Week 7 fixes) |
+| Held-out set (20), first run, frozen | **11/20 (55%)** |
+| Held-out set after fixes (3 scenarios drove fixes) | 14/20 (70%); all 6 remaining failures are keyword-classifier vocabulary |
+| Keyword classifier on 27 labelled messages | 20/27 (74.1%) |
+| Gemini classifier on the same 27 | **not measured by the author of this release; run `python src/gemini_eval.py`** |
+
+The development-set score is optimistic because fixes were developed against it. The held-out figure is the
+honest generalisation estimate for the offline fallback.
+
+## Repository layout
+
+```
+src/         application code, evaluation harness, demo        tests/      pytest suite (79 tests)
+prompts/     versioned classifier prompt (v1.1)                 knowledge/  15 guides + SOURCE_REGISTER.csv
+docs/        requirements, architecture, weekly reports, final report
+evidence/    evaluation results, traces (JSONL), demo transcript, screenshots/
+.github/workflows/ci.yml   runs the tests and the dev evaluation on every push
+```
+
+## Safety design (what holds even if one layer fails)
+
+Tool allow-list enforced in the loop · iteration limit 6 · one retry, only for transient errors ·
+authorization checked before any ticket tool runs · tickets are created `pending_approval` and **no tool can
+approve one** · anonymous sessions never read/write memory · traces store a message fingerprint, not the text.
+
+## Known limitations (see docs/final-report for detail)
+
+1. **Keyword fallback is brittle** on natural phrasing (e.g. "out", "disconnects"): it fails safely (asks a question) but often.
+2. **"No wifi."** is answered with the router factory-reset guide: lexical retrieval matches words, not meaning (FC-10, open).
+3. **Paraphrased prompt injection** with no trigger words is not caught by the pattern rules (FC-11, open); other layers contain the impact.
+4. Answers are composed from guide text, not generated; clarification questions are fixed templates (a safety choice that deviates from the Week 1 boundary matrix).
+5. Outage and ticket systems are simulated. Latency figures exclude any model call.
+6. Retrieval resolution margin is small (threshold 0.15; some correct answers score ~0.15-0.18).
+
+## Releasing
+
+```bash
+git add -A && git commit -m "Release v1.0.0"
+git tag -a v1.0.0 -m "ServiceFlow v1.0.0 - capstone final release"
+git push origin main --tags
+```
+
+## AI assistance
+
+AI assistants were used throughout design, coding, documentation and review. See `docs/final-report`
+(AI Engineering Log appendix). Team members are accountable for everything submitted and must be able to
+explain and run it.
+
+Authors: Buyinza Samuel · Bahati Brenda Kizito · Aruho Priscillah · Andimashimwe Rhoda · Nuwahereza Dennise
